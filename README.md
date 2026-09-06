@@ -1,34 +1,32 @@
 # Recall RAG
 
-Recall RAG is a portfolio implementation of a **grounded operations assistant** for automotive-parts and recall intelligence. It uses public NHTSA recall data alongside clearly labelled synthetic distributor data to demonstrate how an AI assistant can answer operational questions without being given unrestricted access to documents or a database.
+Recall RAG is an AI assistant for automotive-parts and vehicle-recall questions. It combines public NHTSA recall information with operational data and gives users answers they can inspect instead of giving the model unrestricted access to documents or a database.
 
-The project deliberately separates four concerns:
+The system has four main parts:
 
-1. **RAG for unstructured evidence** — retrieve the specific recall notices and guidance that support an answer.
-2. **dbt/ELT for structured business facts** — clean and model recall, demand, inventory, and transfer data before it reaches analytics.
-3. **Governed text-to-SQL** — turn a constrained business question into validated, read-only SQL against approved dbt marts.
-4. **MCP tools and an LLM** — let the model choose from a small set of read-only capabilities, then compose an answer from their structured results.
+1. **Document search** — find the recall notices and guidance that support an answer.
+2. **dbt data models** — clean and combine recall, demand, inventory, and transfer data.
+3. **Text-to-SQL** — turn a business question into validated, read-only SQL against approved models.
+4. **MCP tools** — expose those capabilities through a small set of read-only tools for an LLM or external agent.
 
 The intended operational question is concrete:
 
 > “Which critical brake recalls affect parts Dallas may run out of, what does NHTSA say the safety consequence is, and can Memphis cover the shortage without falling below safety stock?”
 
-## Implemented scope
+## What is implemented
 
-This is a working local implementation, not a production deployment. It keeps the operational surface intentionally small and inspectable.
+This is a working local application. The main pieces are:
 
 | Area | What runs locally |
 | --- | --- |
-| Ingestion | NHTSA vehicle-recall API refresh plus a versioned official NHTSA PDF stored locally with checksum, metadata, and page anchors |
-| RAG | 500-word chunks with 75-word overlap, PostgreSQL FTS, pgvector, independent candidate sets, reciprocal-rank fusion, and per-document result caps |
-| Embeddings | OpenAI `text-embedding-3-small` when `OPENAI_API_KEY` is set; clearly labelled deterministic development embeddings otherwise |
-| Chat | LangGraph routing over retrieval, constrained analytics, and a read-only status path; OpenAI Responses structured output when a key is configured, conservative fallback otherwise |
-| Analytics | dbt Core build with 22 models and 8 data tests across recall intelligence, part demand, stockout risk, and transfer candidates |
-| Text-to-SQL | YAML semantic layer → typed intent → compiler-generated, read-only SQL → SQL AST validation → bounded results |
-| MCP | A real FastMCP server over stdio and local Streamable HTTP, exposing only `search_recall_documents`, `query_recall_analytics`, and `get_data_status` |
-| Evals | Six retrieval fixtures, five analytics fixtures, adversarial semantic-parser checks, and a protocol-level MCP stress suite with twenty-five checks |
-
-The public recall evidence is real; distributor inventory, sales, warehouse, and route records are deliberately marked as synthetic demo data.
+| Ingestion | NHTSA recall API refresh and versioned official NHTSA PDFs with page metadata |
+| Retrieval | 500-token chunks, PostgreSQL full-text search, pgvector, hybrid ranking, and citation limits |
+| Embeddings | OpenAI `text-embedding-3-small`, with a deterministic development fallback |
+| Chat | LangGraph routing across document search, analytics, and source-status checks |
+| Analytics | dbt Core models and tests for recall intelligence, part demand, stockout risk, and transfer candidates |
+| Text-to-SQL | YAML semantic layer, typed intent, compiled read-only SQL, AST validation, and bounded results |
+| MCP | FastMCP over stdio and local Streamable HTTP with three read-only tools |
+| Evaluations | Retrieval, analytics, semantic-parser, and MCP protocol checks |
 
 ## Documentation
 
