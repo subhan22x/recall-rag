@@ -4,6 +4,8 @@ Recall RAG is an AI assistant for automotive-parts and vehicle-recall questions.
 
 **Live demo:** [recall-rag.vercel.app](https://recall-rag.vercel.app)
 
+![Recall RAG assistant](assets/recall-rag-assistant.png)
+
 The system has four main parts:
 
 1. **Document search** — find the recall notices and guidance that support an answer.
@@ -98,4 +100,3 @@ To enable the model and real embeddings, create `backend/.env` from `backend/.en
 - `GET /api/documents/{version_id}/file` — stored PDF used by the evidence viewer
 - `GET /api/mcp/tools` — catalogue of the three actual MCP tools
 - `GET /api/mcp/status` and `GET /api/mcp/calls` — live local MCP status, client setup details, and sanitized tool-call audit
-
