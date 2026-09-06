@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import os
 from typing import Iterator
 
 import psycopg
@@ -30,8 +31,8 @@ BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'recallops_ro') THEN
     CREATE ROLE recallops_ro LOGIN PASSWORD 'recallops_ro' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
   END IF;
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO recallops_ro', current_database());
 END $$;
-GRANT CONNECT ON DATABASE recallops TO recallops_ro;
 GRANT USAGE ON SCHEMA analytics TO recallops_ro;
 GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO recallops_ro;
 ALTER DEFAULT PRIVILEGES IN SCHEMA analytics GRANT SELECT ON TABLES TO recallops_ro;
@@ -232,5 +233,10 @@ CREATE INDEX IF NOT EXISTS mcp_tool_calls_created_idx ON mcp_tool_calls (created
 
 def init_database(settings: Settings) -> None:
     with connection(settings) as conn:
-        conn.execute(SCHEMA_SQL)
+        schema_sql = SCHEMA_SQL
+        if os.getenv("RECALLOPS_SKIP_READONLY_ROLE") == "1":
+            role_setup_start = schema_sql.index("DO $$\nBEGIN")
+            role_setup_end = schema_sql.index("CREATE TABLE IF NOT EXISTS raw_nhtsa_recalls")
+            schema_sql = schema_sql[:role_setup_start] + schema_sql[role_setup_end:]
+        conn.execute(schema_sql)
         conn.commit()

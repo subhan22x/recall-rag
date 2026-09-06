@@ -15,10 +15,11 @@ DBT_DIR = ROOT / "dbt"
 def run_dbt_build(settings: Settings) -> dict[str, object]:
     """Run the checked-in dbt project against the local development database."""
     parsed = urlparse(settings.database_url)
+    default_port = 5433 if parsed.hostname in {None, "localhost", "127.0.0.1"} else 5432
     env = {
         **os.environ,
         "RECALLOPS_DB_HOST": parsed.hostname or "localhost",
-        "RECALLOPS_DB_PORT": str(parsed.port or 5433),
+        "RECALLOPS_DB_PORT": str(parsed.port or default_port),
         "RECALLOPS_DB_USER": parsed.username or "recallops",
         "RECALLOPS_DB_PASSWORD": parsed.password or "recallops",
         "RECALLOPS_DB_NAME": (parsed.path or "/recallops").lstrip("/"),

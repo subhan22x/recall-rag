@@ -34,9 +34,13 @@ class Settings:
 
 def get_settings() -> Settings:
     origins = os.getenv("RECALLOPS_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+    database_url = os.getenv("DATABASE_URL", "postgresql://recallops:recallops@localhost:5433/recallops")
+    analytics_database_url = os.getenv("ANALYTICS_DATABASE_URL")
+    if not analytics_database_url:
+        analytics_database_url = database_url if os.getenv("DATABASE_URL") else "postgresql://recallops_ro:recallops_ro@localhost:5433/recallops"
     return Settings(
-        database_url=os.getenv("DATABASE_URL", "postgresql://recallops:recallops@localhost:5433/recallops"),
-        analytics_database_url=os.getenv("ANALYTICS_DATABASE_URL", "postgresql://recallops_ro:recallops_ro@localhost:5433/recallops"),
+        database_url=database_url,
+        analytics_database_url=analytics_database_url,
         openai_api_key=os.getenv("OPENAI_API_KEY") or None,
         openai_base_url=os.getenv("OPENAI_BASE_URL") or None,
         openai_model=os.getenv("OPENAI_MODEL", "gpt-5.4"),

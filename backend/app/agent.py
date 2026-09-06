@@ -117,6 +117,8 @@ class RecallRagAgent:
             return "combined"
         if analytics:
             return "analytics"
+        if docs:
+            return "documents"
         return "general"
 
     def _route(self, state: AgentState) -> dict[str, Any]:

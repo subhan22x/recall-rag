@@ -3,13 +3,14 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 import hmac
+import os
 from pathlib import Path
 from typing import Literal
 import uuid
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, Response
-import fitz
+import httpx
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.types import Receive, Scope, Send
 
@@ -120,13 +121,19 @@ def pipeline_nodes(settings: Settings) -> list[dict]:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
-    init_database(settings)
-    seed_demo_data(settings)
-    dbt = run_dbt_build(settings)
-    if not dbt["ok"]:
-        raise RuntimeError(f"dbt build failed: {dbt['output']}")
-    sync_recall_documents(settings)
-    sync_official_pdf_documents(settings)
+    if os.getenv("RECALL_RAG_SKIP_BOOTSTRAP") == "1":
+        # Vercel functions are short-lived. Schema creation, ingestion, dbt,
+        # and indexing run once during deployment/bootstrap instead of on each
+        # cold start.
+        dbt = {"ok": True, "output": "remote bootstrap completed"}
+    else:
+        init_database(settings)
+        seed_demo_data(settings)
+        dbt = run_dbt_build(settings)
+        if not dbt["ok"]:
+            raise RuntimeError(f"dbt build failed: {dbt['output']}")
+        sync_recall_documents(settings)
+        sync_official_pdf_documents(settings)
     app.state.settings = settings
     app.state.agent = RecallRagAgent(settings)
     app.state.dbt = dbt
@@ -241,22 +248,50 @@ def document_page(version_id: str, page_number: int) -> dict:
 def document_file(version_id: str):
     with connection(app.state.settings) as conn:
         row = conn.execute(
-            """SELECT version.storage_path, document.mime_type, document.title
+            """SELECT version.storage_path, document.mime_type, document.title, document.canonical_url
             FROM document_versions version JOIN documents document ON document.id = version.document_id
             WHERE version.id = %s""",
             (version_id,),
         ).fetchone()
-    if not row or not row["storage_path"]:
+    if not row:
         raise HTTPException(status_code=404, detail="Stored document file not found")
-    return FileResponse(row["storage_path"], media_type=row["mime_type"], filename=f"{row['title']}.pdf", content_disposition_type="inline")
+    storage_path = Path(row["storage_path"]) if row["storage_path"] else None
+    # The database stores the absolute path used by the indexing worker. In
+    # deployments that path is different, so also look for the bundled
+    # content-addressed copy shipped with the app.
+    if storage_path and not storage_path.exists():
+        bundled_path = Path(__file__).resolve().parents[1] / "data" / "documents" / storage_path.name
+        if bundled_path.exists():
+            storage_path = bundled_path
+    if storage_path and storage_path.exists():
+        return FileResponse(storage_path, media_type=row["mime_type"], filename=f"{row['title']}.pdf", content_disposition_type="inline")
+    try:
+        source = httpx.get(row["canonical_url"], timeout=30, headers={"User-Agent": "Recall RAG/1.0"})
+        source.raise_for_status()
+    except httpx.HTTPError as error:
+        raise HTTPException(status_code=502, detail="Could not fetch the cited document") from error
+    return Response(
+        content=source.content,
+        media_type=row["mime_type"],
+        headers={"Content-Disposition": f"inline; filename=\"{row['title']}.pdf\""},
+    )
 
 
 @app.get("/api/documents/{version_id}/pages/{page_number}/image")
 def document_page_image(version_id: str, page_number: int, citation_id: str | None = None):
     """Render one PDF page with the selected citation coordinates highlighted."""
+    try:
+        import fitz
+    except ImportError as error:
+        raise HTTPException(status_code=501, detail="PDF page rendering is available in the local worker only") from error
     highlight_boxes: list[dict[str, float]] = []
     with connection(app.state.settings) as conn:
-        row = conn.execute("SELECT storage_path FROM document_versions WHERE id = %s", (version_id,)).fetchone()
+        row = conn.execute(
+            """SELECT version.storage_path, document.canonical_url
+            FROM document_versions version JOIN documents document ON document.id = version.document_id
+            WHERE version.id = %s""",
+            (version_id,),
+        ).fetchone()
         if citation_id and citation_id.startswith("chunk_"):
             try:
                 chunk_id = uuid.UUID(citation_id.removeprefix("chunk_"))
@@ -271,10 +306,17 @@ def document_page_image(version_id: str, page_number: int, citation_id: str | No
                     highlight_boxes = chunk["bbox_json"] or []
             except ValueError:
                 highlight_boxes = []
-    if not row or not row["storage_path"]:
+    if not row:
         raise HTTPException(status_code=404, detail="Stored document file not found")
     try:
-        with fitz.open(row["storage_path"]) as pdf:
+        storage_path = Path(row["storage_path"]) if row["storage_path"] else None
+        if storage_path and storage_path.exists():
+            pdf = fitz.open(storage_path)
+        else:
+            source = httpx.get(row["canonical_url"], timeout=30, headers={"User-Agent": "Recall RAG/1.0"})
+            source.raise_for_status()
+            pdf = fitz.open(stream=source.content, filetype="pdf")
+        with pdf:
             if pdf.page_count < 1:
                 raise HTTPException(status_code=404, detail="Document has no pages")
             # Some indexed citation metadata can outlive a source revision;

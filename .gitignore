@@ -3,10 +3,15 @@ dist/
 .playwright/
 .venv/
 backend/.env
-backend/data/documents/
+backend/data/documents/*
+!backend/data/
+!backend/data/documents/
+!backend/data/documents/413d61bc5f00db9e74cbb93ec96c901c393f14ab9aa7731f3359c5b9dc9b5b86.pdf
 backend/dbt/target/
 backend/dbt/logs/
 backend/dbt/.user.yml
 __pycache__/
 *.pyc
 backend/*.sqlite3
+.vercel
+.env*

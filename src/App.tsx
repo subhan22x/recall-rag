@@ -11,7 +11,7 @@ import { siClaude, siCursor, siOpenai } from 'simple-icons'
 
 type View = 'assistant' | 'pipelines' | 'mcp'
 type NodeKind = 'source' | 'raw' | 'staging' | 'mart' | 'tool' | 'agent'
-const API_BASE = 'http://127.0.0.1:8010'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '/api' : 'http://127.0.0.1:8010')
 
 type PipelineNode = {
   id: string
@@ -318,7 +318,11 @@ function EvidencePanel({ selectedDoc, setSelectedDoc, citations, chatResult }: E
   // the opening state honest: starter questions are prompts, not a preloaded answer.
   const docs = citations ?? []
   const isPdf = selectedDoc.mime_type === 'application/pdf'
-  const pdfUrl = `${API_BASE}/api/documents/${selectedDoc.document_version_id}/pages/${selectedDoc.page_number ?? 1}/image?citation_id=${encodeURIComponent(selectedDoc.citation_id)}`
+  // Use the original PDF in the evidence viewer so the browser can render
+  // selectable text and page navigation. The cited passage remains visible
+  // below the viewer; local workers may still expose the image endpoint for
+  // coordinate-level previews.
+  const pdfUrl = `${API_BASE}/api/documents/${selectedDoc.document_version_id}/file#page=${selectedDoc.page_number ?? 1}`
   return <aside className="evidence-panel"><div className="evidence-header"><div><span className="eyebrow">EVIDENCE</span></div><button className="icon-button" aria-label="Collapse evidence"><ChevronRight size={16} /></button></div><section className="evidence-section"><div className="evidence-section-heading"><span>DOCUMENTS</span><small>{docs.length ? `${docs.length} source${docs.length === 1 ? '' : 's'} cited` : 'No sources used yet'}</small></div>{docs.length ? <><div className="doc-list">{docs.map((doc, index) => <button key={doc.citation_id} className={`doc-card ${selectedDoc.citation_id === doc.citation_id ? 'selected' : ''}`} onClick={() => setSelectedDoc(doc)}><span className="doc-number">{index + 1}</span><span className="doc-card-copy"><strong>{doc.title}</strong><small>Public NHTSA source · p. {doc.page_number ?? '—'}</small></span><ChevronRight size={14} /></button>)}</div><div className="document-viewer"><div className="viewer-toolbar"><span><FileText size={13} /> {isPdf ? 'Official PDF' : 'API record'} · page {selectedDoc.page_number ?? '—'}</span><a href={isPdf ? pdfUrl : selectedDoc.source_url} target="_blank" rel="noreferrer" aria-label="Open source"><Maximize2 size={13} /></a></div>{isPdf ? <iframe className="pdf-frame" title={`${selectedDoc.title} page ${selectedDoc.page_number ?? 1}`} src={pdfUrl} /> : <div className="paper"><div className="paper-title">{selectedDoc.title}</div><div className="paper-rule" /><p>Public safety evidence</p><div className="highlighted">{selectedDoc.excerpt}</div><p className="paper-copy muted">Source: <a href={selectedDoc.source_url} target="_blank" rel="noreferrer">National Highway Traffic Safety Administration</a><br />Citation ID {selectedDoc.citation_id}</p></div>}<div className="citation-excerpt"><strong>Cited passage</strong><span>{selectedDoc.excerpt}</span></div></div></> : <div className="empty-evidence"><FileText size={19} /><strong>No document evidence used</strong><span>{chatResult?.analytics_evidence ? 'This answer came from the governed analytics mart, not the document index.' : 'Ask an investigation question to cite a source from the system.'}</span></div>}<RetrievalTracePanel chatResult={chatResult} /></section><section className="evidence-section"><div className="evidence-section-heading"><span>DATA USED</span><small>{chatResult?.analytics_evidence ? 'Governed query executed' : 'No analytics query'}</small></div><DataUsed chatResult={chatResult} /></section></aside>
 }
 

@@ -5,7 +5,6 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-import fitz
 import httpx
 import yaml
 from pgvector import Vector
@@ -25,7 +24,7 @@ def _load_sources() -> list[dict[str, Any]]:
         return list((yaml.safe_load(file) or {}).get("documents", []))
 
 
-def _page_chunks(page: fitz.Page, target_tokens: int = 500, overlap_tokens: int = 75) -> list[tuple[str, int, int, int, list[dict[str, float]]]]:
+def _page_chunks(page: Any, target_tokens: int = 500, overlap_tokens: int = 75) -> list[tuple[str, int, int, int, list[dict[str, float]]]]:
     words = page.get_text("words", sort=True)
     if not words:
         return []
@@ -45,6 +44,10 @@ def _page_chunks(page: fitz.Page, target_tokens: int = 500, overlap_tokens: int 
 
 def sync_official_pdf_documents(settings: Settings) -> dict[str, int | list[str]]:
     """Fetch/version official PDF sources and retain page-aware chunk anchors."""
+    try:
+        import fitz
+    except ImportError:
+        return {"indexed": 0, "unchanged": 0, "failed": ["PyMuPDF is not installed in this runtime"]}
     indexed = 0
     unchanged = 0
     failures: list[str] = []
