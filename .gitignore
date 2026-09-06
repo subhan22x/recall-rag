@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.playwright/
+.venv/
+backend/.env
+backend/data/documents/
+backend/dbt/target/
+backend/dbt/logs/
+backend/dbt/.user.yml
+__pycache__/
+*.pyc
+backend/*.sqlite3

@@ -1,0 +1,32 @@
+version: 1
+description: Governed business vocabulary for the Recall RAG analytics assistant.
+models:
+  recall_intelligence:
+    relation: analytics.mart_recall_intelligence
+    metrics:
+      recall_campaigns: "count(distinct campaign_id)"
+      critical_campaigns: "count(distinct case when urgency_tier = 'critical' then campaign_id end)"
+    dimensions: [campaign_id, manufacturer, make, model, model_year, component, urgency_tier, report_date]
+  recall_part_demand:
+    relation: analytics.mart_recall_part_demand
+    metrics:
+      projected_recall_demand_units: "sum(projected_recall_demand_units)"
+      exposed_customer_vehicles: "sum(matching_customer_vehicles)"
+    dimensions: [campaign_id, warehouse_id, sku, product_category, urgency_tier, crosswalk_version]
+  stockout_risk:
+    relation: analytics.mart_stockout_risk
+    metrics:
+      shortage_units: "sum(shortage_units)"
+      at_risk_skus: "count(distinct case when shortage_units > 0 then sku end)"
+      available_units: "sum(projected_available_units)"
+    dimensions: [campaign_id, warehouse_id, sku, product_category, urgency_tier, snapshot_date]
+  transfer_candidates:
+    relation: analytics.mart_transfer_candidates
+    metrics:
+      recommended_transfer_units: "sum(recommended_transfer_units)"
+      candidate_transfers: "count(*)"
+    dimensions: [campaign_id, sku, destination_warehouse_id, source_warehouse_id, urgency_tier, route_lead_time_days]
+policies:
+  read_only: true
+  max_rows: 100
+  allowed_models: [recall_intelligence, recall_part_demand, stockout_risk, transfer_candidates]

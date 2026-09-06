@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: recallops-postgres
+    environment:
+      POSTGRES_DB: recallops
+      POSTGRES_USER: recallops
+      POSTGRES_PASSWORD: recallops
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recallops -d recallops"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - recallops_postgres:/var/lib/postgresql/data
+
+volumes:
+  recallops_postgres:

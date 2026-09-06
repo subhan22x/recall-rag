@@ -1,0 +1,17 @@
+version: 2
+sources:
+  - name: public
+    schema: public
+    tables:
+      - name: raw_nhtsa_recalls
+      - name: raw_nhtsa_recall_vehicles
+      - name: raw_product_catalog
+      - name: raw_vehicle_fitment
+      - name: raw_customer_fleet
+      - name: raw_sales_orders
+      - name: raw_inventory_snapshots
+      - name: raw_open_sales_orders
+      - name: raw_purchase_orders
+      - name: raw_warehouse_routes
+      - name: raw_safety_stock_rules
+      - name: raw_component_product_crosswalk

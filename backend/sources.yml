@@ -1,0 +1,8 @@
+version: 1
+documents:
+  - source_key: nhtsa-motor-vehicle-defects-and-recalls
+    title: Motor Vehicle Safety Defects and Recalls
+    url: https://www.nhtsa.gov/sites/nhtsa.gov/files/2024-11/MVSDefectsandRecalls-Update_112124_v1a_tag.pdf
+    mime_type: application/pdf
+    parser: pymupdf-v1
+    refresh: on_startup_and_manual_refresh

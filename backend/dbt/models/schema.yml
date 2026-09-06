@@ -1,0 +1,38 @@
+version: 2
+models:
+  - name: stg_nhtsa_recalls
+    columns:
+      - name: source_key
+        data_tests: [unique, not_null]
+      - name: campaign_id
+        data_tests: [not_null]
+  - name: int_recall_campaign_vehicles
+    columns:
+      - name: urgency_tier
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [critical, high, standard]
+  - name: mart_recall_intelligence
+    description: Public NHTSA recall intelligence at campaign and vehicle grain.
+    columns:
+      - name: campaign_id
+        data_tests: [not_null]
+  - name: mart_recall_part_demand
+    description: Scenario demand estimate over explicitly synthetic distributor data.
+    columns:
+      - name: projected_recall_demand_units
+        data_tests:
+          - non_negative
+  - name: mart_stockout_risk
+    description: Stockout-risk calculations using synthetic inventory and demand data.
+    columns:
+      - name: shortage_units
+        data_tests:
+          - non_negative
+  - name: mart_transfer_candidates
+    description: Read-only transfer candidates; never an inventory write instruction.
+    columns:
+      - name: recommended_transfer_units
+        data_tests:
+          - transfer_within_limits

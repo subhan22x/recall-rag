@@ -1,0 +1,12 @@
+recallops:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('RECALLOPS_DB_HOST', 'localhost') }}"
+      port: "{{ env_var('RECALLOPS_DB_PORT', '5433') | int }}"
+      user: "{{ env_var('RECALLOPS_DB_USER', 'recallops') }}"
+      pass: "{{ env_var('RECALLOPS_DB_PASSWORD', 'recallops') }}"
+      dbname: "{{ env_var('RECALLOPS_DB_NAME', 'recallops') }}"
+      schema: analytics
+      threads: 4
