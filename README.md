@@ -28,6 +28,32 @@ This is a working local application. The main pieces are:
 | MCP | FastMCP over stdio and local Streamable HTTP with three read-only tools |
 | Evaluations | Retrieval, analytics, semantic-parser, and MCP protocol checks |
 
+## MCP integration
+
+MCP (Model Context Protocol) is the interface an external AI client uses to call Recall RAG. Instead of giving Claude, Cursor, or Codex a database connection or access to the document directory, the MCP server exposes three specific operations with typed inputs and bounded outputs.
+
+### Available tools
+
+- `search_recall_documents` searches the indexed NHTSA documents. It accepts a natural-language question, an optional campaign ID, and a small result limit. It returns ranked passages with source titles, pages, excerpts, and citation IDs.
+- `query_recall_analytics` answers questions about the dbt data models. It accepts a business question such as “Which warehouse has the most shortage units?” and returns rows, the semantic terms used, the compiled SQL, and freshness information. It never accepts raw SQL from the client.
+- `get_data_status` reports whether the document index and analytics models are current, along with source counts, model versions, and the latest evaluation status.
+
+### How a request works
+
+1. An external client connects to the MCP server and discovers the three tool schemas.
+2. The client chooses a tool based on the user’s question.
+3. The server validates the inputs, applies limits, and runs either hybrid document retrieval or the governed analytics compiler.
+4. The server returns a small structured result. For document searches, every passage includes the information needed to cite the source.
+5. The client writes the final answer using those results. It never receives unrestricted database credentials, filesystem paths, or the full document corpus.
+
+A question that needs both kinds of evidence can call both search and analytics. For example, the document tool can provide NHTSA’s stated safety consequence while the analytics tool calculates which warehouse has a shortage. The answer can then keep those two sources separate instead of treating a generated statement as a fact.
+
+### Safety and limits
+
+The MCP server is read-only. It cannot update inventory, trigger a refresh, execute arbitrary SQL, or access local files. Analytics queries are compiled from an approved YAML semantic layer, restricted to known metrics, dimensions, filters, and dbt models, then validated before execution. Retrieval results and analytics rows are capped. Tool calls record only safe operational metadata such as client, tool, status, latency, and result count.
+
+The server supports stdio for desktop clients and local Streamable HTTP for integration tests. The MCP Access screen shows the available tools, connection status, recent calls, and client configuration examples. The protocol-level test suite checks tool discovery, schemas, retrieval results, SQL restrictions, row limits, refusal behavior, and freshness reporting.
+
 ## Documentation
 
 - [Architecture and system boundaries](docs/architecture.md)
