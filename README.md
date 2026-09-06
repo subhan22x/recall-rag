@@ -97,14 +97,4 @@ To enable the model and real embeddings, create `backend/.env` from `backend/.en
 - `GET /api/mcp/tools` — catalogue of the three actual MCP tools
 - `GET /api/mcp/status` and `GET /api/mcp/calls` — live local MCP status, client setup details, and sanitized tool-call audit
 
-## MCP verification
 
-With the API running, this exercises the local Streamable HTTP server as an external MCP client. It verifies tool discovery, read-only schemas, retrieval, analytical correctness, limits, refusals, and data status:
-
-```bash
-.venv/bin/python backend/scripts/mcp_stress_test.py
-```
-
-## Scope boundaries
-
-This project intentionally does **not** include n8n, multi-agent orchestration, application user authentication, arbitrary SQL execution, write-capable inventory tools, approval workflows, or deployment infrastructure. The local MCP HTTP surface is loopback-only by default (or bearer-protected when explicitly configured). The goal is a focused, inspectable demonstration of grounded retrieval, governed analytical access, and evaluations.
